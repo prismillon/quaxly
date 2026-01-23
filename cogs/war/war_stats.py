@@ -173,7 +173,7 @@ class WarStats(Base):
         track: str = None,
         team: str = None,
         game: Choice[str] = None,
-    ) -> None:
+    ):
         """check race stats in the specified channel"""
 
         channel = channel or interaction.channel
@@ -333,14 +333,52 @@ class WarStats(Base):
         channel: discord.TextChannel = None,
         war_id: str = None,
     ):
-        """delete a war from the database"""
+        """delete a war from the database, or all wars if no ID is provided"""
 
         channel = channel or interaction.channel
 
         if not war_id:
-            return await interaction.response.send_message(
-                content="please provide a war ID", ephemeral=True
+            with get_db_session() as session:
+                war_count = (
+                    session.query(WarEvent)
+                    .filter(WarEvent.channel_id == channel.id)
+                    .count()
+                )
+
+                if war_count == 0:
+                    return await interaction.response.send_message(
+                        content="this channel does not have any war stats",
+                        ephemeral=True,
+                    )
+
+                embed = discord.Embed(
+                    color=0x47E0FF,
+                    title="Delete All War Stats",
+                    description=f"You are about to delete **{war_count}** wars from {channel.mention}",
+                )
+
+            view = ConfirmButton()
+            await interaction.response.send_message(
+                embed=embed, view=view, ephemeral=True
             )
+            await view.wait()
+
+            if view.answer:
+                with get_db_session() as session:
+                    session.query(WarEvent).filter(
+                        WarEvent.channel_id == channel.id
+                    ).delete()
+                    session.commit()
+
+                embed.title = "War Stats Removed"
+                embed.description = (
+                    f"All **{war_count}** wars have been removed from {channel.mention}"
+                )
+            else:
+                embed.title = "Action Canceled"
+                embed.description = "Data remained unchanged"
+
+            return await interaction.edit_original_response(embed=embed, view=None)
 
         try:
             war_id_int = int(war_id)
