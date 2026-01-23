@@ -365,9 +365,19 @@ class WarStats(Base):
 
             if view.answer:
                 with get_db_session() as session:
+                    war_event_ids = [
+                        w.id
+                        for w in session.query(WarEvent.id)
+                        .filter(WarEvent.channel_id == channel.id)
+                        .all()
+                    ]
+                    if war_event_ids:
+                        session.query(Race).filter(
+                            Race.war_event_id.in_(war_event_ids)
+                        ).delete(synchronize_session=False)
                     session.query(WarEvent).filter(
                         WarEvent.channel_id == channel.id
-                    ).delete()
+                    ).delete(synchronize_session=False)
                     session.commit()
 
                 embed.title = "War Stats Removed"
