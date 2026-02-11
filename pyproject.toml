@@ -10,6 +10,6 @@ dependencies = [
     "discord-py==2.6.4",
     "matplotlib==3.10.8",
     "psycopg2-binary>=2.9.0",
-    "redis==7.1.0",
+    "redis==7.1.1",
     "sqlalchemy>=2.0.0",
 ]
