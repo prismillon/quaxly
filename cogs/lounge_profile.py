@@ -9,7 +9,7 @@ from discord.ext import commands
 
 from autocomplete import name_autocomplete
 from models import GAME_MK8DX
-from utils import gameChoices, lounge_data
+from utils import lounge_data, loungeGameChoices
 
 
 def mmr_to_rank(mmr):
@@ -89,7 +89,7 @@ def create_plot(base, history):
 @app_commands.command()
 @app_commands.autocomplete(player=name_autocomplete)
 @app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.choices(game=gameChoices)
+@app_commands.choices(game=loungeGameChoices)
 @app_commands.describe(
     player="The player you want to check lounge profile from",
     game="The game to check profile for",
@@ -102,7 +102,7 @@ async def lounge_profile(
     """lounge profile of a player"""
 
     embed = discord.Embed(color=0x47E0FF)
-    game_value = game.value if game else "mkworld"
+    game_value = game.value if game else "mkworld24p"
 
     async with aiohttp.ClientSession() as session:
         async with session.get(

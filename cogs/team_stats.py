@@ -10,7 +10,7 @@ from discord.app_commands import Choice, Range
 from discord.ext import commands
 
 from autocomplete import mkc_team_autocomplete
-from utils import gameChoices, lounge_season, mkc_data, statChoices
+from utils import lounge_season, loungeGameChoices, mkc_data, statChoices
 
 MAX_FIELDS = 21
 MAX_EMBEDS = 10
@@ -22,7 +22,7 @@ async def check_for_none(data: list) -> bool:
 
 
 async def id_to_stat(
-    discord_id: int, season: Optional[int] = None, game: str = "mkworld"
+    discord_id: int, season: Optional[int] = None, game: str = "mkworld24p"
 ):
     season_param = f"&season={season}" if season else ""
     async with aiohttp.ClientSession() as session:
@@ -41,7 +41,10 @@ async def id_to_stat(
 
 
 async def fc_to_stat(
-    fc: str, season: Optional[int] = None, game: str = "mkworld", discord_id: int = None
+    fc: str,
+    season: Optional[int] = None,
+    game: str = "mkworld24p",
+    discord_id: int = None,
 ):
     season_param = f"&season={season}" if season else ""
     async with aiohttp.ClientSession() as session:
@@ -90,7 +93,7 @@ async def create_stat_embeds(
 @app_commands.command()
 @app_commands.guild_only()
 @app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.choices(stat=statChoices, game=gameChoices)
+@app_commands.choices(stat=statChoices, game=loungeGameChoices)
 @app_commands.describe(
     role="the role you want to check stats from",
     stat="the type of stats",
@@ -107,7 +110,7 @@ async def role_stats(
     """Check stats of a discord role"""
     await interaction.response.defer()
     stat = stat or statChoices[0]
-    game_value = game.value if game else "mkworld"
+    game_value = game.value if game else "mkworld24p"
 
     try:
         member_tasks = [
@@ -146,7 +149,7 @@ async def role_stats(
 @app_commands.command()
 @app_commands.autocomplete(team=mkc_team_autocomplete)
 @app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.choices(stat=statChoices, game=gameChoices)
+@app_commands.choices(stat=statChoices, game=loungeGameChoices)
 @app_commands.describe(
     team="the team you want to check stats from",
     stat="the type of stats",
@@ -161,7 +164,7 @@ async def mkc_stats(
     game: Choice[str] = None,
 ):
     """Check stats of a Mario Kart Central team"""
-    game_value = game.value if game else "mkworld"
+    game_value = game.value if game else "mkworld24p"
     season = season or lounge_season.data(game_value)
     stat = stat or statChoices[0]
 
@@ -271,7 +274,7 @@ async def mkc_stats(
 
 @app_commands.command()
 @app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.choices(stat=statChoices, game=gameChoices)
+@app_commands.choices(stat=statChoices, game=loungeGameChoices)
 @app_commands.describe(
     room="message with the list of fc",
     team_size="the size of the team for this event",
@@ -311,7 +314,7 @@ async def fc_stats(
             return
 
     await interaction.response.defer()
-    game_value = game.value if game else "mkworld"
+    game_value = game.value if game else "mkworld24p"
     season = season or lounge_season.data(game_value)
     stat = stat or statChoices[0]
 

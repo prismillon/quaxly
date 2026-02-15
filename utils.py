@@ -11,6 +11,11 @@ gameChoices = [
     Choice(name="Mario Kart 8 Deluxe", value="mk8dx"),
     Choice(name="Mario Kart World", value="mkworld"),
 ]
+loungeGameChoices = [
+    Choice(name="Mario Kart 8 Deluxe", value="mk8dx"),
+    Choice(name="Mario Kart World (24p)", value="mkworld24p"),
+    Choice(name="Mario Kart World (12p)", value="mkworld12p"),
+]
 statChoices = [
     Choice(name="mmr", value="mmr"),
     Choice(name="peak", value="maxMmr"),
