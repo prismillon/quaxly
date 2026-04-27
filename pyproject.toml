@@ -9,7 +9,7 @@ dependencies = [
     "alembic>=1.12.0",
     "discord-py==2.7.1",
     "matplotlib==3.10.9",
-    "psycopg2-binary>=2.9.0",
+    "psycopg2-binary>=2.9.12",
     "redis==7.4.0",
     "sqlalchemy>=2.0.0",
 ]
