@@ -174,14 +174,15 @@ class QuizSession:
     def _build_result_embed(
         self, idx: int, question: dict, correct_users: list
     ) -> discord.Embed:
+        answer = question.get("display_answer", question["answer"])
         if correct_users:
             names = ", ".join(u.display_name for u in correct_users)
             return discord.Embed(
-                description=f"✅ **{question['answer']}** · 🎉 {names}",
+                description=f"✅ **{answer}** · 🎉 {names}",
                 color=0x2ECC71,
             )
         return discord.Embed(
-            description=f"❌ **{question['answer']}**",
+            description=f"❌ **{answer}**",
             color=0xE74C3C,
         )
 

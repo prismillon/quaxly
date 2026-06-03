@@ -45,9 +45,26 @@ def _country_aliases(country: dict) -> list[str]:
     return [a for a in dict.fromkeys(aliases) if a and a != answer]
 
 
-def _capital_aliases(capital_fr: str) -> list[str]:
-    en = _capital_en(capital_fr)
-    return [capital_fr] if capital_fr != en else []
+def _all_capitals_fr(country: dict) -> list[str]:
+    """Every accepted capital (French spelling); some countries have several."""
+    return [country["capital_fr"], *country.get("extra_capitals_fr", [])]
+
+
+def _all_capitals_en(country: dict) -> list[str]:
+    """Every accepted capital (English spelling)."""
+    return [_capital_en(c) for c in _all_capitals_fr(country)]
+
+
+def _capital_aliases(country: dict) -> list[str]:
+    """Accepted spellings for the capital(s): English + French variants, minus the primary answer."""
+    answer = _capital_en(country["capital_fr"])
+    aliases: list[str] = []
+    for capital_fr in _all_capitals_fr(country):
+        en = _capital_en(capital_fr)
+        aliases.append(en)
+        if capital_fr != en:
+            aliases.append(capital_fr)
+    return [a for a in dict.fromkeys(aliases) if a and a != answer]
 
 
 def make_flag_question(country: dict) -> dict:
@@ -63,16 +80,17 @@ def make_flag_question(country: dict) -> dict:
 
 def make_capital_question(country: dict) -> dict:
     variant = random.choice(["country_to_capital", "capital_to_country"])
-    capital_en = _capital_en(country["capital_fr"])
 
     if variant == "country_to_capital":
         return {
             "type": "capital",
             "text": f"What is the capital of **{_display_en(country)}**?",
-            "answer": capital_en,
-            "aliases": _capital_aliases(country["capital_fr"]),
+            "answer": _capital_en(country["capital_fr"]),
+            "display_answer": " / ".join(_all_capitals_en(country)),
+            "aliases": _capital_aliases(country),
             "country_en": country["en"],
         }
+    capital_en = _capital_en(random.choice(_all_capitals_fr(country)))
     return {
         "type": "capital",
         "text": f"**{capital_en}** is the capital of which country?",
