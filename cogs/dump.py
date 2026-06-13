@@ -10,7 +10,7 @@ from models import GAME_MKWORLD, TimeRecord, Track, get_user_by_discord_id
 from utils import itemChoices
 
 TIME_PATTERN = re.compile(
-    r"(?:^|\s)(?:(?:3DS|DS|N64|Wii|Tour|GCN|SNES|NSW)\s+)?([A-Za-z0-9\'\s\-?.]+?)\s+—\s+@[^:]+:\s+(\d:\d{2}\.\d{3})",
+    r"(?:^|\s)(?:(3DS|DS|N64|Wii|Tour|GCN|SNES|NSW)\s+)?([A-Za-z0-9\'?.\- ]+?):\s+(\d:\d{2}\.\d{3})",
     re.IGNORECASE,
 )
 
