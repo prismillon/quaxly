@@ -10,7 +10,7 @@ from models import GAME_MKWORLD, TimeRecord, Track, get_user_by_discord_id
 from utils import itemChoices
 
 TIME_PATTERN = re.compile(
-    r"(?:^|\s)(?:(3DS|DS|N64|Wii|Tour|GCN|SNES|NSW)\s+)?([A-Za-z0-9\'?.\- ]+?):\s+(\d:\d{2}\.\d{3})",
+    r"(?:^|\s)([A-Za-z0-9\'?.\- ]+?):\s+(\d:\d{2}\.\d{3})",
     re.IGNORECASE,
 )
 
@@ -45,12 +45,12 @@ class Dump(commands.Cog):
                     "please use /register first", ephemeral=True
                 )
 
-            for track_source, time in matches:
+            for track_name, time in matches:
                 track = (
                     session.query(Track)
                     .filter(
                         Track.game == GAME_MKWORLD,
-                        Track.full_name.ilike(f"%{track_source}%"),
+                        Track.full_name.ilike(f"%{track_name.strip()}%"),
                     )
                     .first()
                 )
