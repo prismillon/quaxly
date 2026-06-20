@@ -163,7 +163,7 @@ class Quizz(commands.Cog):
         interaction: discord.Interaction,
         type: Choice[str] = None,
         difficulty: Choice[str] = None,
-        questions: Range[int, 5, 30] = 10,
+        questions: Range[int, 5, 200] = 10,
     ):
         """Start a geography quiz in this channel"""
         channel = interaction.channel
