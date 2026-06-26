@@ -47,7 +47,7 @@ class ImportTimeCommands:
         race_type = items.value
         speed_value = int(speed.value)
 
-        self.active_user[name.lower()] = {
+        self.active_user[(interaction.channel_id, name.lower())] = {
             "date": datetime.now(),
             "game": game,
             "race_type": race_type,
@@ -68,11 +68,15 @@ class ImportTimeCommands:
         if (
             message.author.id != 543424033673445378
             or len(message.embeds) != 1
-            or message.embeds[0].title[9:].lower() not in self.active_user.keys()
+            or not message.embeds[0].title
         ):
             return
 
-        user_data = self.active_user[message.embeds[0].title[9:].lower()]
+        session_key = (message.channel.id, message.embeds[0].title[9:].lower())
+        if session_key not in self.active_user:
+            return
+
+        user_data = self.active_user[session_key]
         game = user_data["game"]
         race_type = user_data["race_type"]
         speed = user_data["speed"]
@@ -166,7 +170,7 @@ class ImportTimeCommands:
             await message.channel.send(
                 f"Successfully processed {imported_count} times!"
             )
-            self.active_user.pop(message.embeds[0].title[9:].lower())
+            self.active_user.pop(session_key)
 
     @tasks.loop(minutes=1)
     async def remove_expired_user(self):
