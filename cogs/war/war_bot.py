@@ -11,13 +11,43 @@ from autocomplete import mkc_tag_autocomplete
 from cogs.war.base import Base
 from database import get_db_session, r, rs
 from game_utils import get_track_by_name
-from models import GAME_MKWORLD, Race, WarEvent
-from utils import gameChoices
+from models import GAME_MK8DX, GAME_MKWII, GAME_MKWORLD, Race, WarEvent
+from utils import warGameChoices
 
 _SCORE = (15, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+_SCORE_MKWII = (15, 12, 10, 8, 6, 4, 3, 2, 1, 0)
+
+WAR_FORMATS = {
+    GAME_MK8DX: {
+        "score": _SCORE,
+        "total": sum(_SCORE),
+        "team_size": 6,
+        "max_pos": 12,
+        "spots_re": "^((?!--)[0-9+-])+$",
+    },
+    GAME_MKWORLD: {
+        "score": _SCORE,
+        "total": sum(_SCORE),
+        "team_size": 6,
+        "max_pos": 12,
+        "spots_re": "^((?!--)[0-9+-])+$",
+    },
+    GAME_MKWII: {
+        "score": _SCORE_MKWII,
+        "total": sum(_SCORE_MKWII),
+        "team_size": 5,
+        "max_pos": 10,
+        "spots_re": "^((?!--)[0-9-])+$",
+    },
+}
 
 
-def text_to_score(text: str):
+def get_war_format(game: str):
+    return WAR_FORMATS.get(game, WAR_FORMATS[GAME_MKWORLD])
+
+
+def text_to_score(text: str, fmt=WAR_FORMATS[GAME_MKWORLD]):
+    twelve = fmt["max_pos"] >= 12
     data = []
     prev = None
     next_list = []
@@ -34,7 +64,7 @@ def text_to_score(text: str):
         if text.startswith("0"):
             next_list = [10]
             text = text[1:]
-        elif text.startswith("+"):
+        elif twelve and text.startswith("+"):
             next_list = [11]
             text = text[1:]
         elif text.startswith("10"):
@@ -43,19 +73,19 @@ def text_to_score(text: str):
         elif text.startswith("110"):
             next_list = [1, 10]
             text = text[3:]
-        elif text.startswith("1112"):
+        elif twelve and text.startswith("1112"):
             next_list = [11, 12]
             text = text[4:]
-        elif text.startswith("111"):
+        elif twelve and text.startswith("111"):
             next_list = [1, 11]
             text = text[3:]
-        elif text.startswith("112"):
+        elif twelve and text.startswith("112"):
             next_list = [1, 12]
             text = text[3:]
-        elif text.startswith("11"):
+        elif twelve and text.startswith("11"):
             next_list = [11]
             text = text[2:]
-        elif text.startswith("12"):
+        elif twelve and text.startswith("12"):
             if data:
                 next_list = [12]
             else:
@@ -66,36 +96,47 @@ def text_to_score(text: str):
             text = text[1:]
         if loopFlag:
             if not next_list:
-                next_list = [12]
+                next_list = [fmt["max_pos"]]
             next = next_list[0]
             while next - prev > 1:
                 data.append(prev + 1)
                 prev += 1
             loopFlag = False
         data += next_list
-    return validate_score(set(data))
+    return validate_score(set(data), fmt)
 
 
-def validate_score(data: int):
-    last_spot = 12
-    while len(data) < 6:
+def validate_score(data: set, fmt=WAR_FORMATS[GAME_MKWORLD]):
+    last_spot = fmt["max_pos"]
+    while len(data) < fmt["team_size"]:
         data.add(last_spot)
         last_spot -= 1
-    return sorted(list(data))[:6]
+    return sorted(list(data))[: fmt["team_size"]]
 
 
 def make_embed(war):
     embed = discord.Embed(
         color=0x47E0FF, title=f"Total Score after Race {len(war['diff'])}"
     )
-    diff = sum(war["home_score"]) - sum(war["enemy_score"])
-    embed.add_field(name=war["tag"], value=sum(war["home_score"]))
-    embed.add_field(name=war["enemy_tag"], value=sum(war["enemy_score"]))
+    home_pen = war.get("home_pen", 0)
+    enemy_pen = war.get("enemy_pen", 0)
+    home_total = sum(war["home_score"]) - home_pen
+    enemy_total = sum(war["enemy_score"]) - enemy_pen
+    diff = home_total - enemy_total
+    embed.add_field(name=war["tag"], value=home_total)
+    embed.add_field(name=war["enemy_tag"], value=enemy_total)
     embed.add_field(
         name="Difference",
         value=f"{diff if diff < 0 else '+' + str(diff)}",
         inline=False,
     )
+    if home_pen or enemy_pen:
+        pen_lines = []
+        if home_pen:
+            pen_lines.append(f"{war['tag']}: -{home_pen}")
+        if enemy_pen:
+            pen_lines.append(f"{war['enemy_tag']}: -{enemy_pen}")
+        embed.add_field(name="Penalties", value="\n".join(pen_lines), inline=False)
     if len(war["diff"]) > 0:
         race_field_value = "```\n"
         for i, (spot, diff, track) in enumerate(
@@ -128,7 +169,7 @@ class WarBot(Base):
     @app_commands.command(name="start")
     @app_commands.guild_only()
     @app_commands.autocomplete(tag=mkc_tag_autocomplete, enemy_tag=mkc_tag_autocomplete)
-    @app_commands.choices(game=gameChoices)
+    @app_commands.choices(game=warGameChoices)
     @app_commands.describe(
         tag="the tag of your team", enemy_tag="the tag of the enemy team"
     )
@@ -172,6 +213,8 @@ class WarBot(Base):
                 "enemy_tag": enemy_tag,
                 "home_score": [],
                 "enemy_score": [],
+                "home_pen": 0,
+                "enemy_pen": 0,
                 "spots": [],
                 "diff": [],
                 "tracks": [],
@@ -213,23 +256,25 @@ class WarBot(Base):
             )
 
         war = self.active_war[interaction.channel.id]
+        fmt = get_war_format(war.get("game", GAME_MKWORLD))
 
         if len(war["spots"]) < race_nb:
             return await interaction.response.send_message(
                 content="invalid race number", ephemeral=True
             )
 
-        if not re.fullmatch("^((?!--)[0-9+-])+$", spots):
+        if not re.fullmatch(fmt["spots_re"], spots):
             return await interaction.response.send_message(
                 content="invalid spots format", ephemeral=True
             )
 
-        spots = text_to_score(spots)
-        scored = sum(map(lambda r: _SCORE[r - 1], spots))
+        spots = text_to_score(spots, fmt)
+        scored = sum(map(lambda r: fmt["score"][r - 1], spots))
+        enemy_scored = fmt["total"] - scored
         war["spots"][race_nb - 1] = spots
         war["home_score"][race_nb - 1] = scored
-        war["enemy_score"][race_nb - 1] = 82 - scored
-        war["diff"][race_nb - 1] = scored - (82 - scored)
+        war["enemy_score"][race_nb - 1] = enemy_scored
+        war["diff"][race_nb - 1] = scored - enemy_scored
 
         with get_db_session() as session:
             war_event = session.query(WarEvent).filter(WarEvent.id == war["id"]).first()
@@ -245,9 +290,9 @@ class WarBot(Base):
 
                 if race:
                     race.positions = spots
-                    race.score_diff = scored - (82 - scored)
+                    race.score_diff = scored - enemy_scored
                     race.home_score = scored
-                    race.enemy_score = 82 - scored
+                    race.enemy_score = enemy_scored
                     session.commit()
 
         await r.set(interaction.channel.id, json.dumps(war, default=str))
@@ -302,6 +347,24 @@ class WarBot(Base):
             )
             return await message.reply(embed=make_embed(war), mention_author=False)
 
+        pen_match = re.fullmatch(r"(un)?pen (-?[0-9]+)", message.content.lower())
+        if pen_match:
+            amount = int(pen_match.group(2))
+            if amount == 0:
+                return
+            team = "enemy_pen" if amount > 0 else "home_pen"
+            if pen_match.group(1):
+                war[team] = max(0, war.get(team, 0) - abs(amount))
+            else:
+                war[team] = war.get(team, 0) + abs(amount)
+            self.active_war[message.channel.id] = war
+
+            await r.set(
+                message.channel.id,
+                json.dumps(war, default=str),
+            )
+            return await message.reply(embed=make_embed(war), mention_author=False)
+
         if message.content.lower() == "back":
             race_id = len(war["spots"])
             war["spots"] = war["spots"][: race_id - 1]
@@ -323,11 +386,12 @@ class WarBot(Base):
             )
             return await message.reply(embed=make_embed(war), mention_author=False)
 
-        if re.fullmatch("^((?!--)[0-9+-])+$", message.content):
-            spots = text_to_score(message.content)
-            scored = sum(map(lambda r: _SCORE[r - 1], spots))
+        fmt = get_war_format(war.get("game", GAME_MKWORLD))
+        if re.fullmatch(fmt["spots_re"], message.content):
+            spots = text_to_score(message.content, fmt)
+            scored = sum(map(lambda r: fmt["score"][r - 1], spots))
             home_score = scored
-            enemy_score = 82 - scored
+            enemy_score = fmt["total"] - scored
             diff = home_score - enemy_score
 
             war["spots"].append(spots)

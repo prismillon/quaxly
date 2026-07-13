@@ -20,7 +20,8 @@ Base = declarative_base()
 
 GAME_MK8DX = "mk8dx"
 GAME_MKWORLD = "mkworld"
-VALID_GAMES = [GAME_MK8DX, GAME_MKWORLD]
+GAME_MKWII = "mkwii"
+VALID_GAMES = [GAME_MK8DX, GAME_MKWORLD, GAME_MKWII]
 
 
 class Cup(Base):

@@ -11,6 +11,11 @@ gameChoices = [
     Choice(name="Mario Kart 8 Deluxe", value="mk8dx"),
     Choice(name="Mario Kart World", value="mkworld"),
 ]
+warGameChoices = [
+    Choice(name="Mario Kart 8 Deluxe", value="mk8dx"),
+    Choice(name="Mario Kart World", value="mkworld"),
+    Choice(name="Mario Kart Wii", value="mkwii"),
+]
 loungeGameChoices = [
     Choice(name="Mario Kart 8 Deluxe", value="mk8dx"),
     Choice(name="Mario Kart World (24p)", value="mkworld24p"),
@@ -72,7 +77,7 @@ class MkcData:
         """Search for teams and return their rosters"""
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                f"{self.base_url}/registry/teams?is_historical=false&is_active=true&sort_by_newest=false&min_player_count=6&name_or_tag={search}"
+                f"{self.base_url}/registry/teams?is_historical=false&is_active=true&sort_by_newest=false&min_player_count=5&name_or_tag={search}"
             ) as response:
                 if response.status == 200:
                     data = await response.json()
@@ -81,7 +86,7 @@ class MkcData:
                     for team in teams:
                         team_rosters = team.get("rosters", [])
                         for roster in team_rosters:
-                            if roster["game"] == "mkworld" or roster["game"] == "mk8dx":
+                            if roster["game"] in ("mkworld", "mk8dx", "mkw"):
                                 rosters.append(roster)
                     return rosters[:limit] if limit else rosters
                 return None

@@ -127,12 +127,12 @@ class Help(commands.Cog):
 
         embeds[-1].add_field(
             name="war start",
-            value="```/war start tag enemy_tag```start a war with selected teams, provides an overlay link for streaming",
+            value="```/war start tag enemy_tag (game)```start a war with selected teams (MK8DX and Mario Kart World are 6v6, Mario Kart Wii is 5v5), provides an overlay link for streaming",
             inline=False,
         )
         embeds[-1].add_field(
             name="war system",
-            value="**1:** you are supposed to type the map abbreviation in the war channel when it gets picked\n\n**2:** type score all attached to each other in order (example: `134568`) to count a race\n**warning** bottom spots are added automatically so you never have to type 12 for example\n`-` is a range and if at the start can be used to specify the top spots (example: `-379` would be top3 7 9 and 12)\n\n**3:** mistyped something? Just type `back` and it will erase the last race\n\n**4:** want to add a track afterward? You can type `race <nb> <track>` to change it (example: `race 7 bdd`)\n\n**5:** use `/war edit_race` to modify positions for a specific race\n\n**6:** use `/war track` to set the upcoming track before the race starts",
+            value="**1:** you are supposed to type the map abbreviation in the war channel when it gets picked\n\n**2:** type score all attached to each other in order (example: `134568`) to count a race\n**warning** bottom spots are added automatically so you never have to type 12 for example\n`-` is a range and if at the start can be used to specify the top spots (example: `-379` would be top3 7 9 and 12)\n\n**3:** mistyped something? Just type `back` and it will erase the last race\n\n**4:** want to add a track afterward? You can type `race <nb> <track>` to change it (example: `race 7 bdd`)\n\n**5:** use `/war edit_race` to modify positions for a specific race\n\n**6:** use `/war track` to set the upcoming track before the race starts\n\n**7:** type `pen <points>` to give a penalty to the enemy team (example: `pen 10`), use a negative value to penalize your own team (example: `pen -10`), mistyped? `unpen <points>` reverts it the same way (example: `unpen 10` removes a 10 points penalty from the enemy team)",
             inline=False,
         )
         embeds[-1].add_field(

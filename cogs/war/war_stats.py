@@ -12,7 +12,7 @@ from autocomplete import mkc_tag_autocomplete, track_autocomplete
 from cogs.war.base import Base
 from database import get_db_session, r, rs
 from models import GAME_MK8DX, Race, WarEvent
-from utils import ConfirmButton, Paginator, gameChoices
+from utils import ConfirmButton, Paginator, warGameChoices
 
 
 class WarStats(Base):
@@ -164,7 +164,7 @@ class WarStats(Base):
         track="the track you want to check stats from",
     )
     @app_commands.autocomplete(track=track_autocomplete, team=mkc_tag_autocomplete)
-    @app_commands.choices(game=gameChoices)
+    @app_commands.choices(game=warGameChoices)
     async def stats(
         self,
         interaction: discord.Interaction,
