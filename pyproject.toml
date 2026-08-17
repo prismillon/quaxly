@@ -6,11 +6,11 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "aiohttp==3.14.3",
-    "alembic>=1.12.0",
+    "alembic>=1.19.1",
     "discord-py==2.7.1",
-    "geopandas>=1.0.0",
+    "geopandas>=1.1.4",
     "matplotlib==3.11.1",
     "psycopg2-binary>=2.9.12",
     "redis==8.1.0",
-    "sqlalchemy>=2.0.51",
+    "sqlalchemy>=2.0.52",
 ]
