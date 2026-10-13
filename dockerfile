@@ -1,4 +1,4 @@
-FROM python:3.14-slim AS builder
+FROM python:3.15-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv /uv /uvx /bin/
 
@@ -30,7 +30,7 @@ RUN SP=/app/.venv/lib/python3.14/site-packages && \
   mkdir -p /app/heavy/pyogrio.libs && \
   mv /app/heavy/pyogrio/pyogrio.libs /app/heavy/pyogrio.libs/
 
-FROM python:3.14-slim AS production
+FROM python:3.15-slim AS production
 
 RUN groupadd -r quaxly && useradd -r -g quaxly quaxly
 
