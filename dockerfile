@@ -1,4 +1,8 @@
-FROM python:3.14-slim AS builder
+# Single source of truth for the Python version. Renovate understands ARG
+# substitution in FROM, so it keeps this (and .python-version) up to date.
+ARG PYTHON_VERSION=3.14
+
+FROM python:${PYTHON_VERSION}-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv /uv /uvx /bin/
 
@@ -21,7 +25,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Each package (and its bundled .libs) is staged in its own subdir so that
 # copying the subdir's *contents* in the production stage preserves the package
 # directory layout as its own image layer.
-RUN SP=/app/.venv/lib/python3.14/site-packages && \
+RUN SP=$(/app/.venv/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))') && \
   for p in pyogrio pandas numpy matplotlib pyproj shapely fontTools; do \
     mkdir -p "/app/heavy/$p" && \
     mv "$SP/$p" "/app/heavy/$p/" && \
@@ -30,13 +34,15 @@ RUN SP=/app/.venv/lib/python3.14/site-packages && \
   mkdir -p /app/heavy/pyogrio.libs && \
   mv /app/heavy/pyogrio/pyogrio.libs /app/heavy/pyogrio.libs/
 
-FROM python:3.14-slim AS production
+FROM python:${PYTHON_VERSION}-slim AS production
+ARG PYTHON_VERSION
 
 RUN groupadd -r quaxly && useradd -r -g quaxly quaxly
 
 # Reassemble the venv from several layers (base venv + one per heavy package) so
-# no single pushed blob exceeds the registry's upload limit.
-ARG SP=/app/.venv/lib/python3.14/site-packages
+# no single pushed blob exceeds the registry's upload limit. Derive the target
+# site-packages path from the image's Python version instead of hardcoding it.
+ENV SP=/app/.venv/lib/python${PYTHON_VERSION}/site-packages
 COPY --from=builder --chown=quaxly:quaxly /app/.venv /app/.venv
 COPY --from=builder --chown=quaxly:quaxly /app/heavy/pyogrio/ ${SP}/
 COPY --from=builder --chown=quaxly:quaxly /app/heavy/pyogrio.libs/ ${SP}/
