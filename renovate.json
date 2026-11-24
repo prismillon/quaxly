@@ -2,10 +2,22 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "platformAutomerge": false,
-  "ignoreTests": true,
   "automergeType": "pr",
   "reviewers": ["prismillon"],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
   "packageRules": [
+    {
+      "description": "Rebase Python updates so they pick up a refreshed uv.lock",
+      "matchPackageNames": ["python"],
+      "rebaseWhen": "behind-base-branch"
+    },
+    {
+      "description": "Automerge uv.lock refreshes once the image build is green",
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "automerge": true
+    },
     {
       "description": "Automerge non-major updates",
       "matchUpdateTypes": ["minor", "patch"],
