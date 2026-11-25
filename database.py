@@ -9,7 +9,21 @@ from sqlalchemy.pool import QueuePool
 
 from models import Base
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/quaxly")
+def _database_url() -> str:
+    """Return the SQLAlchemy URL with the psycopg (v3) driver made explicit.
+
+    The deployment secret stores a plain ``postgresql://`` URL. SQLAlchemy 2.1
+    already defaults that to psycopg v3, but spelling the driver out keeps the
+    behaviour stable across SQLAlchemy versions.
+    """
+    url = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/quaxly")
+    for prefix in ("postgresql+psycopg2://", "postgresql://", "postgres://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix) :]
+    return url
+
+
+DATABASE_URL = _database_url()
 
 engine = create_engine(
     DATABASE_URL,
