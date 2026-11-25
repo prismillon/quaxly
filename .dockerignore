@@ -1,5 +1,6 @@
 .github
 .venv
+.python-version
 .vscode
 db_setup/
 .env
