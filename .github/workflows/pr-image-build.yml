@@ -38,10 +38,10 @@ jobs:
           tags: "app/pr-check:pr-${{ github.event.pull_request.number }}"
           cache-from: type=gha
 
-      # Loads every cog and opens a real Discord gateway connection with the
-      # dev bot token, catching import/driver/packaging regressions before
-      # they reach :latest. Requires the DISCORD_DEV_TOKEN repository secret.
-      - name: Smoke test Discord connection
+      # Loads every cog, checks the SQLAlchemy driver against a real Postgres,
+      # and optionally opens a Discord gateway connection. The gateway check is
+      # skipped when DISCORD_DEV_TOKEN is not set.
+      - name: Smoke test image
         if: steps.build.outcome == 'success'
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_DEV_TOKEN }}
@@ -49,16 +49,17 @@ jobs:
           set -euo pipefail
 
           if [ -z "${DISCORD_TOKEN}" ]; then
-            echo "::error::DISCORD_DEV_TOKEN is not set. Add a dev bot token to the repository secrets."
-            exit 1
+            echo "::warning::DISCORD_DEV_TOKEN is not set; skipping the Discord gateway check."
           fi
 
           suffix="${{ github.run_id }}-${{ github.run_attempt }}"
           network="quaxly-smoke-net-${suffix}"
           redis="quaxly-smoke-redis-${suffix}"
+          db="quaxly-smoke-db-${suffix}"
           app="quaxly-smoke-app-${suffix}"
           cleanup() {
             docker rm -f "${app}" >/dev/null 2>&1 || true
+            docker rm -f "${db}" >/dev/null 2>&1 || true
             docker rm -f "${redis}" >/dev/null 2>&1 || true
             docker network rm "${network}" >/dev/null 2>&1 || true
           }
@@ -66,11 +67,16 @@ jobs:
           trap 'exit 130' INT
           trap 'exit 143' TERM
 
-          # cogs/war talks to Redis while the cog is constructed, so give the
-          # smoke test its own throwaway Redis instead of relying on a DB.
+          # cogs/war talks to Redis while the cog is constructed, and the DB
+          # check exercises the SQLAlchemy driver end to end. Give the smoke
+          # test throwaway sidecars instead of production services.
           docker network create "${network}" >/dev/null
           docker run -d --rm --name "${redis}" --network "${network}" \
             redis:8-alpine >/dev/null
+          docker run -d --rm --name "${db}" --network "${network}" \
+            -e POSTGRES_PASSWORD=postgres \
+            postgres:17-alpine >/dev/null
+
           redis_ready=false
           for _ in $(seq 1 30); do
             if docker exec "${redis}" redis-cli ping 2>/dev/null | grep -q PONG; then
@@ -85,6 +91,20 @@ jobs:
             exit 1
           fi
 
+          db_ready=false
+          for _ in $(seq 1 30); do
+            if docker exec "${db}" pg_isready -U postgres >/dev/null 2>&1; then
+              db_ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "${db_ready}" != "true" ]; then
+            echo "::error::Postgres sidecar did not become ready"
+            docker logs "${db}" || true
+            exit 1
+          fi
+
           run() {
             if command -v timeout >/dev/null 2>&1; then
               timeout 180 "$@"
@@ -96,7 +116,8 @@ jobs:
           run docker run --rm --name "${app}" --network "${network}" \
             -e DISCORD_TOKEN \
             -e REDIS_URL="${redis}" \
-            -e DATABASE_URL="postgresql://smoke:smoke@127.0.0.1:5432/smoke" \
+            -e SMOKE_DB_CHECK=1 \
+            -e DATABASE_URL="postgresql://postgres:postgres@${db}:5432/postgres" \
             "app/pr-check:pr-${{ github.event.pull_request.number }}" \
             python smoke_test.py
 

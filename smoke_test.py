@@ -37,11 +37,18 @@ class GatewayProbe(discord.Client):
         await self.close()
 
 
-async def main() -> None:
-    token = os.environ.get("DISCORD_TOKEN")
-    if not token:
-        raise SystemExit("[smoke] DISCORD_TOKEN is not set")
+def check_database() -> None:
+    if os.environ.get("SMOKE_DB_CHECK") != "1":
+        return
 
+    import database
+
+    if not database.health_check():
+        raise SystemExit("[smoke] database health check failed")
+    print("[smoke] database SELECT 1 OK")
+
+
+async def main() -> None:
     intents = discord.Intents.default()
     intents.members = True
     intents.message_content = True
@@ -55,6 +62,13 @@ async def main() -> None:
     # AutoShardedBot.close() only works after the shard queue exists, so close
     # the HTTP client directly: this bot is never started or connected.
     await bot.http.close()
+
+    check_database()
+
+    token = os.environ.get("DISCORD_TOKEN")
+    if not token:
+        print("[smoke] DISCORD_TOKEN not set; skipping Discord gateway check")
+        return
 
     # default() avoids the privileged members/message_content intents, which
     # the dev application may not have enabled.
