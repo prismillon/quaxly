@@ -1,8 +1,4 @@
-# Single source of truth for the Python version. Renovate understands ARG
-# substitution in FROM, so it keeps this (and .python-version) up to date.
-ARG PYTHON_VERSION=3.14
-
-FROM python:${PYTHON_VERSION}-slim AS builder
+FROM python:3.15-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv /uv /uvx /bin/
 
@@ -22,9 +18,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # own image layer. Otherwise the whole venv (geopandas + GDAL/PROJ/GEOS) ships
 # as one ~270MB layer that exceeds the registry's per-blob upload limit and the
 # push fails with 413. Keep this list in sync with the heavy dependencies.
-# Each package (and its bundled .libs) is staged in its own subdir so that
-# copying the subdir's *contents* in the production stage preserves the package
-# directory layout as its own image layer.
+# Each package (and its bundled .libs) is staged in its own subdir; the
+# production stage puts the *contents* of those dirs on PYTHONPATH, so this does
+# not depend on the interpreter's versioned site-packages path.
 RUN SP=$(/app/.venv/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))') && \
   for p in pyogrio pandas numpy matplotlib pyproj shapely fontTools; do \
     mkdir -p "/app/heavy/$p" && \
@@ -34,27 +30,27 @@ RUN SP=$(/app/.venv/bin/python -c 'import sysconfig; print(sysconfig.get_path("p
   mkdir -p /app/heavy/pyogrio.libs && \
   mv /app/heavy/pyogrio/pyogrio.libs /app/heavy/pyogrio.libs/
 
-FROM python:${PYTHON_VERSION}-slim AS production
-ARG PYTHON_VERSION
+FROM python:3.15-slim AS production
 
 RUN groupadd -r quaxly && useradd -r -g quaxly quaxly
 
 # Reassemble the venv from several layers (base venv + one per heavy package) so
-# no single pushed blob exceeds the registry's upload limit. Derive the target
-# site-packages path from the image's Python version instead of hardcoding it.
-ENV SP=/app/.venv/lib/python${PYTHON_VERSION}/site-packages
+# no single pushed blob exceeds the registry's upload limit. The heavy packages
+# go to a version-independent path on PYTHONPATH instead of being copied back
+# into the interpreter's site-packages directory.
 COPY --from=builder --chown=quaxly:quaxly /app/.venv /app/.venv
-COPY --from=builder --chown=quaxly:quaxly /app/heavy/pyogrio/ ${SP}/
-COPY --from=builder --chown=quaxly:quaxly /app/heavy/pyogrio.libs/ ${SP}/
-COPY --from=builder --chown=quaxly:quaxly /app/heavy/pandas/ ${SP}/
-COPY --from=builder --chown=quaxly:quaxly /app/heavy/numpy/ ${SP}/
-COPY --from=builder --chown=quaxly:quaxly /app/heavy/matplotlib/ ${SP}/
-COPY --from=builder --chown=quaxly:quaxly /app/heavy/pyproj/ ${SP}/
-COPY --from=builder --chown=quaxly:quaxly /app/heavy/shapely/ ${SP}/
-COPY --from=builder --chown=quaxly:quaxly /app/heavy/fontTools/ ${SP}/
+COPY --from=builder --chown=quaxly:quaxly /app/heavy/pyogrio/ /app/heavy/
+COPY --from=builder --chown=quaxly:quaxly /app/heavy/pyogrio.libs/ /app/heavy/
+COPY --from=builder --chown=quaxly:quaxly /app/heavy/pandas/ /app/heavy/
+COPY --from=builder --chown=quaxly:quaxly /app/heavy/numpy/ /app/heavy/
+COPY --from=builder --chown=quaxly:quaxly /app/heavy/matplotlib/ /app/heavy/
+COPY --from=builder --chown=quaxly:quaxly /app/heavy/pyproj/ /app/heavy/
+COPY --from=builder --chown=quaxly:quaxly /app/heavy/shapely/ /app/heavy/
+COPY --from=builder --chown=quaxly:quaxly /app/heavy/fontTools/ /app/heavy/
 COPY --chown=quaxly:quaxly . /app/
 
 ENV PATH="/app/.venv/bin:$PATH" \
+  PYTHONPATH="/app/heavy" \
   PYTHONUNBUFFERED=1 \
   PYTHONDONTWRITEBYTECODE=1
 
