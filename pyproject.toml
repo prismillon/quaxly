@@ -10,9 +10,7 @@ dependencies = [
     "discord-py==2.7.1",
     "geopandas>=1.0.0",
     "matplotlib==3.11.2",
-    "psycopg2-binary>=2.9.12",
+    "psycopg[binary]>=3.2.0",
     "redis==8.2.0",
-    # 2.1 makes psycopg (v3) the default driver for postgresql:// URLs, but the
-    # app only ships psycopg2-binary. Keep the cap until we migrate the driver.
-    "sqlalchemy>=2.0.51,<2.1",
+    "sqlalchemy>=2.1.9",
 ]
