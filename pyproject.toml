@@ -14,5 +14,5 @@ dependencies = [
     "redis==8.2.0",
     # 2.1 makes psycopg (v3) the default driver for postgresql:// URLs, but the
     # app only ships psycopg2-binary. Keep the cap until we migrate the driver.
-    "sqlalchemy>=2.0.51,<2.1",
+    "sqlalchemy>=2.1.9,<2.2",
 ]
