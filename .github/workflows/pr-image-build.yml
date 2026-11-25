@@ -34,8 +34,71 @@ jobs:
         with:
           context: .
           push: false
+          load: true
           tags: "app/pr-check:pr-${{ github.event.pull_request.number }}"
           cache-from: type=gha
+
+      # Loads every cog and opens a real Discord gateway connection with the
+      # dev bot token, catching import/driver/packaging regressions before
+      # they reach :latest. Requires the DISCORD_DEV_TOKEN repository secret.
+      - name: Smoke test Discord connection
+        if: steps.build.outcome == 'success'
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_DEV_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DISCORD_TOKEN}" ]; then
+            echo "::error::DISCORD_DEV_TOKEN is not set. Add a dev bot token to the repository secrets."
+            exit 1
+          fi
+
+          suffix="${{ github.run_id }}-${{ github.run_attempt }}"
+          network="quaxly-smoke-net-${suffix}"
+          redis="quaxly-smoke-redis-${suffix}"
+          app="quaxly-smoke-app-${suffix}"
+          cleanup() {
+            docker rm -f "${app}" >/dev/null 2>&1 || true
+            docker rm -f "${redis}" >/dev/null 2>&1 || true
+            docker network rm "${network}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+
+          # cogs/war talks to Redis while the cog is constructed, so give the
+          # smoke test its own throwaway Redis instead of relying on a DB.
+          docker network create "${network}" >/dev/null
+          docker run -d --rm --name "${redis}" --network "${network}" \
+            redis:8-alpine >/dev/null
+          redis_ready=false
+          for _ in $(seq 1 30); do
+            if docker exec "${redis}" redis-cli ping 2>/dev/null | grep -q PONG; then
+              redis_ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "${redis_ready}" != "true" ]; then
+            echo "::error::Redis sidecar did not become ready"
+            docker logs "${redis}" || true
+            exit 1
+          fi
+
+          run() {
+            if command -v timeout >/dev/null 2>&1; then
+              timeout 180 "$@"
+            else
+              "$@"
+            fi
+          }
+
+          run docker run --rm --name "${app}" --network "${network}" \
+            -e DISCORD_TOKEN \
+            -e REDIS_URL="${redis}" \
+            -e DATABASE_URL="postgresql://smoke:smoke@127.0.0.1:5432/smoke" \
+            "app/pr-check:pr-${{ github.event.pull_request.number }}" \
+            python smoke_test.py
 
       - name: Extract Renovate update table
         id: renovate
