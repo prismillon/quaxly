@@ -38,19 +38,12 @@ jobs:
           tags: "app/pr-check:pr-${{ github.event.pull_request.number }}"
           cache-from: type=gha
 
-      # Loads every cog, checks the SQLAlchemy driver against a real Postgres,
-      # and optionally opens a Discord gateway connection. The gateway check is
-      # skipped when DISCORD_DEV_TOKEN is not set.
       - name: Smoke test image
         if: steps.build.outcome == 'success'
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_DEV_TOKEN }}
         run: |
           set -euo pipefail
-
-          if [ -z "${DISCORD_TOKEN}" ]; then
-            echo "::warning::DISCORD_DEV_TOKEN is not set; skipping the Discord gateway check."
-          fi
 
           suffix="${{ github.run_id }}-${{ github.run_attempt }}"
           network="quaxly-smoke-net-${suffix}"
