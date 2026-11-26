@@ -52,7 +52,8 @@ COPY --chown=quaxly:quaxly . /app/
 ENV PATH="/app/.venv/bin:$PATH" \
   PYTHONPATH="/app/heavy" \
   PYTHONUNBUFFERED=1 \
-  PYTHONDONTWRITEBYTECODE=1
+  PYTHONDONTWRITEBYTECODE=1 \
+  MPLCONFIGDIR=/app/data/matplotlib
 
 WORKDIR /app
 USER quaxly

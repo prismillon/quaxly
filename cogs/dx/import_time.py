@@ -105,7 +105,7 @@ class ImportTimeCommands:
                 session.add(user_server)
 
             time_list = re.findall(
-                "[a-zA-Z0-9]+ : \*\*\d+\/\d+\*\* -> \d:[0-5]\d\.\d{3}",
+                r"[a-zA-Z0-9]+ : \*\*\d+/\d+\*\* -> \d:[0-5]\d\.\d{3}",
                 message.embeds[0].description,
             )
 
