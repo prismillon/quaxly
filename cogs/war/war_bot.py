@@ -327,20 +327,22 @@ class WarBot(Base):
                 track = get_track_by_name(
                     session, war.get("game", GAME_MKWORLD), data[2]
                 )
-            if not track:
+                track_name = track.track_name if track else None
+            if not track_name:
                 return
-            war["tracks"][int(data[1]) - 1] = track.track_name
+            war["tracks"][int(data[1]) - 1] = track_name
             self.active_war[message.channel.id] = war
             with get_db_session() as session:
                 race = (
                     session.query(Race)
                     .filter(
-                        (Race.war_event_id == war["id"]) & (Race.race_number == data[1])
+                        (Race.war_event_id == war["id"])
+                        & (Race.race_number == int(data[1]))
                     )
                     .first()
                 )
                 if race:
-                    race.track_name = track.track_name
+                    race.track_name = track_name
             await r.set(
                 message.channel.id,
                 json.dumps(self.active_war[message.channel.id], default=str),

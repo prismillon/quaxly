@@ -30,6 +30,7 @@ GEOPANDAS_ALIASES: dict[str, list[str]] = {
     "United States of America": ["United States of America", "United States"],
     "Dem. Rep. Congo": ["Dem. Rep. Congo", "Democratic Republic of the Congo"],
     "Bosnia and Herz.": ["Bosnia and Herz.", "Bosnia and Herzegovina"],
+    "Ivory Coast": ["Ivory Coast", "Côte d'Ivoire"],
 }
 
 
